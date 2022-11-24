@@ -1,0 +1,31 @@
+---
+title: "oxidative"
+output: html_document
+date: "2022-11-24"
+---
+tuk pisha obqsneniq 
+
+```{r zarejdane na biblioteki} 
+library(DESeq2)
+library(airway)
+library(tidyverse)
+library(tximport)
+library(apeglm)
+library(rio)
+
+```
+#zarejdane na danni
+polzvame rio za da zaredim faila zashtoto rio moje da zaredi vsqkakvi formati
+
+```{r  zarejdane na danni}
+counts_data <- readRDS("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\GSE207578_txi.RDS")
+colData <- rio::import("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\SraRunTable.txt")
+```
+#proverqvame syotvetstvie
+
+```{r}
+all(colnames(counts_data) %in% colnames(colData))
+
+```
+
+
