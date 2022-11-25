@@ -4,7 +4,7 @@ output: html_document
 date: "2022-11-24"
 ---
 tuk pisha obqsneniq 
-
+#zarejdane na biblioteka
 ```{r zarejdane na biblioteki} 
 library(DESeq2)
 library(airway)
@@ -12,6 +12,7 @@ library(tidyverse)
 library(tximport)
 library(apeglm)
 library(rio)
+library(readxl)
 
 ```
 #zarejdane na danni
@@ -19,13 +20,30 @@ polzvame rio za da zaredim faila zashtoto rio moje da zaredi vsqkakvi formati
 
 ```{r  zarejdane na danni}
 counts_data <- readRDS("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\GSE207578_txi.RDS")
-colData <- rio::import("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\SraRunTable.txt")
+colData <- rio::import("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\SraRunTable.txt", col.names="Run")
+
 ```
-#proverqvame syotvetstvie
+
+#pyrvata kolona zapochva s cifri(1,2,3,4 i tn), a trqbva da zapochva s geni, trqbva da premestim genite v pyrvata kolona, utochnqvame koq iskame da ni e pyrvata kolona, v sluchaq e "Run"
+```{r}
+colDataa <- read.csv("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\SraRunTable.excel.csv", row.names="Run")
+```
+
+#txi faila e list, trqbva ni samo chast ot nego i trqbva da e vyv format matrica
+```{r}
+counts_data_counts_matrix=counts_data[["counts"]]
+```
+
+#proverqvame syotvetstvie matrica i metadanni
 
 ```{r}
-all(colnames(counts_data) %in% colnames(colData))
+all(colnames(counts_data_counts_matrix) %in% rownames(colDataa))
 
 ```
 
+#syzdavane na dds
+```{r}
+dds <- DESeqDataSetFromMatrix(counts_data_counts_matrix, colDataa , Treatment )
+```
+?DESeqDataSetFromMatrix
 
