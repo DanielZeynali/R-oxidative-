@@ -1,0 +1,73 @@
+---
+title: "oxidative"
+output: html_document
+date: "2022-11-24"
+---
+tuk pisha obqsneniq 
+#zarejdane na biblioteka
+```{r zarejdane na biblioteki} 
+library(DESeq2)
+library(airway)
+library(tidyverse)
+library(tximport)
+library(apeglm)
+library(rio)
+library(readxl)
+
+```
+#zarejdane na danni
+polzvame rio za da zaredim faila zashtoto rio moje da zaredi vsqkakvi formati
+
+```{r  zarejdane na danni}
+counts_data <- rio::import("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\GSE207578_txi.RDS")
+
+```
+
+#pyrvata kolona zapochva s cifri(1,2,3,4 i tn), a trqbva da zapochva s geni, trqbva da premestim genite v pyrvata kolona, utochnqvame koq iskame da ni e pyrvata kolona, v sluchaq e "Run"
+```{r}
+colDataa <- read.csv("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\SraRunTable.excel.csv", row.names="Run")
+```
+
+#txi faila e list, trqbva ni samo chast ot nego i trqbva da e vyv format matrica
+```{r}
+counts_data_counts_matrix=counts_data[["counts"]]
+```
+
+#proverqvame syotvetstvie matrica i metadanni
+
+```{r}
+all(colnames(counts_data_counts_matrix) %in% rownames(colDataa))
+
+```
+#promenqme reda na podrejdane na genite ot colDataa, za da syvpadat s tezi ot counts_data_counts_matrix
+```{r}
+colDataa <-colDataa[c(1, 8, 2, 9, 3, 11, 4, 5, 6, 10, 7, 12),]
+```
+
+#syzdavane na dds
+```{r}
+dds <- DESeqDataSetFromMatrix(countData =round(counts_data_counts_matrix), colData=colDataa,  ~ Treatment)
+```
+#promenqne strukturata na dds
+```{r}
+dds$Treatment=relevel(dds$Treatment, ref = "None")
+```
+dds$Treatment
+#deseq
+```{r}
+dds = DESeq(dds)
+```
+#rezultati
+```{r}
+results=results(dds)
+results
+summary(results)
+resultz=results(dds, alpha=0.01)
+summary(results0.01)
+resultsNames(dds)
+results1=results(dds,contrast = c("Treatment" ,"None",  "Edaravone" ))
+summary(results1)
+plotMA(results0.01)
+?results
+```
+
