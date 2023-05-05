@@ -13,61 +13,115 @@ library(tximport)
 library(apeglm)
 library(rio)
 library(readxl)
-
+library(here)
+#Dobre e da izchistim rabotnata sreda ot ostranali ot predi obekti
+rm(list=ls())
 ```
 #zarejdane na danni
 polzvame rio za da zaredim faila zashtoto rio moje da zaredi vsqkakvi formati
 
 ```{r  zarejdane na danni}
-counts_data <- rio::import("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\GSE207578_txi.RDS")
-
+counts_data <- rio::import(here::here("data", "GSE207578_txi.RDS")) # using here function to open objects in the Project directory and subdirectories
 ```
 
 #pyrvata kolona zapochva s cifri(1,2,3,4 i tn), a trqbva da zapochva s geni, trqbva da premestim genite v pyrvata kolona, utochnqvame koq iskame da ni e pyrvata kolona, v sluchaq e "Run"
 ```{r}
-colDataa <- read.csv("C:\\Users\\Administrator\\Desktop\\R projects\\versii\\SraRunTable.excel.csv", row.names="Run")
+colDataa <- read.csv(here::here("data","SraRunTable.txt"), row.names="Run")
 ```
 
-#txi faila e list, trqbva ni samo chast ot nego i trqbva da e vyv format matrica
-```{r}
+#NE....# txi faila e list, trqbva ni samo chast ot nego i trqbva da e vyv format matrica
+### Vsyshtnost za uprajnenie moje po tozi nachin, no s txi file kato input, funkciqta DESeqDataSetFromTximport iziskva vsichki danni v txi obekta i zatova boravim s celiq obekt
+
 counts_data_counts_matrix=counts_data[["counts"]]
+
+#proverqvame syotvetstvie imena na probi v matrica i metadanni - ako e "TRUE", 
+
+Podbirame samo kolonite ot metadanni, koito sa neobhodimi kato informaciq
+Tuk dva faktora na dizaina sa grupirani v edna kolona - razdelqme gi na logichen princip 
+i oprostqvame imenata za ulesnenie
+```{r}
+#Podbirame sa informaciqta, koqto ni interesuva za dizaina
+colDataa <- dplyr::select(colDataa, Treatment) %>% mutate(Prooxidant = Treatment, Protective = Treatment) %>% mutate(across(c(Treatment, Prooxidant, Protective), str_replace_all, "\\+","_")) %>% # Poneje "+" e edin ot specialnite simvoli s funkcionalnost (kakto i "|"), kogato se tyrsi syvpadenie, go zamenqme s "_"
+mutate_at('Prooxidant', funs(str_replace_all(., "TDP43_Ethacrynic acid_Edaravone|TDP43_Ethacrynic acid", "Damaged"))) %>% 
+mutate(Prooxidant = replace(Prooxidant, Prooxidant!="Damaged", "None")) %>% 
+# Syshtoto za kolonkata "Protective"
+mutate_at('Protective', funs(str_replace_all(., "TDP43_Ethacrynic acid_Edaravone", "Edaravone"))) %>% 
+mutate(Protective = replace(Protective, Protective!="Edaravone", "Control")) %>% 
+# Premahvame kolonkata Treatment
+select(Prooxidant, Protective)  
 ```
 
-#proverqvame syotvetstvie matrica i metadanni
-
 ```{r}
-all(colnames(counts_data_counts_matrix) %in% rownames(colDataa))
-
+#Proverka dali vsichki ot ediniq spisyk se sydyrjat v drugiq
+all(colnames(counts_data[["counts"]]) %in% rownames(colDataa))
+#Proverka dali posledovatelnostta e ednakva
+all(colnames(counts_data[["counts"]]) == rownames(colDataa))
 ```
-#promenqme reda na podrejdane na genite ot colDataa, za da syvpadat s tezi ot counts_data_counts_matrix
-```{r}
+
+#NE....#promenqme reda na podrejdane na genite ot colDataa, za da syvpadat s tezi ot counts_data_counts_matrix 
+
 colDataa <-colDataa[c(1, 8, 2, 9, 3, 11, 4, 5, 6, 10, 7, 12),]
+
+# Prenarejdaneto stava s indeksirane - funkciqta kvadratni skobi "[]" i ako redove/koloni sa naimenuvani, imenata syshto mogat da slujat kato indeks
+# Obiknove obache pyrvo se proverqva dali vsichki neobhodimi imena ot ediniq list se sydyrjat v drugiq
+#Dvete goreopisani deistviq mogat da bydat obedineni s komandata "intersect()"
+
+
+Generirame sposak sys syvpadashtite stoinosti za imena na probi, podredeni kakto v counts_data. Shte go izpolzvame za etalon za posledvashto prepodrejdane
+```{r}
+selected_samples <- intersect(colnames(counts_data$counts), rownames(colDataa))
+```
+Prepodrejdane na vsichki koloni po zadadeni imena na redove
+```{r}
+colDataa<-colDataa[selected_samples,]
+#check again
+all(colnames(counts_data[["counts"]]) == rownames(colDataa))
 ```
 
-#syzdavane na dds
+
+#syzdavane na dds - izpolzvaite funkciqta, podhodqshta za txi danni kato input
 ```{r}
-dds <- DESeqDataSetFromMatrix(countData =round(counts_data_counts_matrix), colData=colDataa,  ~ Treatment)
+dds<-DESeqDataSetFromTximport(counts_data,
+                                 colData = colDataa,
+                                 design = ~ Protective + Prooxidant)
 ```
-#promenqne strukturata na dds
+#Zapazvame samo genite s pone 10 cheteniq:
+
 ```{r}
-dds$Treatment=relevel(dds$Treatment, ref = "None")
+keep <- rowSums(counts(dds)) >= 10
+dds <- dds[keep, ]
 ```
-dds$Treatment
-#deseq
+
+#Kato referentno nivo na dizaina zapazvame samo `Control` ili kontroli, т.е. netretiranite:
+
+```{r}
+dds$TREATMENT <- relevel(dds$Protective, ref = 'Control')
+```
+
+#promenqne strukturata na dds v Deseq2 obekt ot vtori porqdak
 ```{r}
 dds = DESeq(dds)
 ```
 #rezultati
 ```{r}
+
 results=results(dds)
 results
+
 summary(results)
-resultz=results(dds, alpha=0.01)
+results0.01=results(dds, alpha=0.01)
+
 summary(results0.01)
+
 resultsNames(dds)
-results1=results(dds,contrast = c("Treatment" ,"None",  "Edaravone" ))
+
+results1=results(dds,contrast = c("Protective" ,"Control",  "Edaravone" ))
+
 summary(results1)
+
 plotMA(results0.01)
 ?results
+
+#Ostava da generirate spisaka s 10-te naj-znachimo promeneni geni ot kam ekspresiq i posle da prevedete imenata im v smisleni simvolni znacheniq
 ```
 
